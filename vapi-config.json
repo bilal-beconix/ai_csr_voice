@@ -1,0 +1,108 @@
+{
+  "assistant": {
+    "name": "Restaurant Order Bot",
+    "voice": {
+      "provider": "11labs",
+      "voiceId": "rachel"
+    },
+    "model": {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "systemPrompt": "You are a friendly and efficient phone order assistant for [RESTAURANT NAME]. You handle pickup orders and reservations.\n\nYour goals:\n1. Greet the caller warmly\n2. Find out if they want to place a pickup order or make a reservation\n3. For orders: collect all items they want, confirm the order with estimated total, then place it\n4. For reservations: collect name, date, time, party size, and phone number\n5. Always confirm details back to the caller before finalizing\n\nRules:\n- Always get the caller's name and phone number before placing an order or reservation\n- If they ask about pricing, use estimate_price BEFORE asking for their name/phone\n- Speak naturally — don't read out JSON or technical strings\n- If an item isn't on the menu, politely let them know and suggest alternatives\n- Keep responses concise — this is a phone call\n\nOpening: 'Thank you for calling [RESTAURANT NAME]! Are you calling to place a pickup order or make a reservation?'"
+    },
+    "serverUrl": "YOUR_MAKE_COM_WEBHOOK_URL",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "estimate_price",
+          "description": "Calculate the estimated total price for a list of menu items. Use this when the caller asks how much something costs or wants to know the total before ordering.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "description": "List of items the caller wants to price",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name":     { "type": "string",  "description": "Name of the menu item" },
+                    "quantity": { "type": "integer", "description": "How many of this item", "default": 1 }
+                  },
+                  "required": ["name"]
+                }
+              }
+            },
+            "required": ["items"]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "place_order",
+          "description": "Place a confirmed pickup order. Call this only after the caller has confirmed all items and you have their name, phone, and pickup time.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name":     { "type": "string"  },
+                    "quantity": { "type": "integer" }
+                  },
+                  "required": ["name"]
+                }
+              },
+              "customer_name": { "type": "string",  "description": "Caller's full name" },
+              "phone":         { "type": "string",  "description": "Caller's phone number" },
+              "pickup_time":   { "type": "string",  "description": "When they want to pick up, e.g. '20 minutes' or '6:30 PM'" }
+            },
+            "required": ["items", "customer_name", "phone", "pickup_time"]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "make_reservation",
+          "description": "Book a table reservation. Collect all details before calling this.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "name":       { "type": "string",  "description": "Name for the reservation" },
+              "date":       { "type": "string",  "description": "Date of reservation, e.g. 'March 25th' or 'tomorrow'" },
+              "time":       { "type": "string",  "description": "Time of reservation, e.g. '7 PM'" },
+              "party_size": { "type": "integer", "description": "Number of guests" },
+              "phone":      { "type": "string",  "description": "Contact phone number" },
+              "notes":      { "type": "string",  "description": "Any special requests or dietary needs", "default": "" }
+            },
+            "required": ["name", "date", "time", "party_size", "phone"]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "get_menu_info",
+          "description": "Get menu information — a specific item price, a full category list, or the overall menu sections. Use this when caller asks 'what do you have?', 'what are your appetizers?', or 'how much is X?'",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "type": "string",
+                "description": "Specific dish name to look up the price for. Leave empty if asking about a category."
+              },
+              "category": {
+                "type": "string",
+                "description": "Menu category to list, e.g. 'appetizers', 'soup', 'main entree'. Leave empty if asking about a specific dish."
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}
